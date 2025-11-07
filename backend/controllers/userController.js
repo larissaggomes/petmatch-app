@@ -1,10 +1,77 @@
-// controllers/userController.js (ou authController.js)
+// user.controller.js
 
-// 1. Importar o modelo de Usuário
-const User = require('../models/User'); 
+const User = require('../models/User'); // Ajuste o caminho conforme sua estrutura
+const bcrypt = require('bcrypt'); // Biblioteca para comparação de senhas
+const jwt = require('jsonwebtoken'); // Biblioteca para geração de tokens
 
 // 2. Importar a função de geração de Token
 const { generateToken } = require('../utils/authUtils'); // <-- IMPORTADO AQUI!
+
+// Certifique-se de que esta variável de ambiente está definida no seu .env
+const JWT_SECRET = process.env.JWT_SECRET || 'sua_chave_secreta_padrao'; 
+
+/**
+ * @desc Autentica um usuário e retorna um token de acesso
+ * @route POST /api/users/login
+ * @access Public
+ */
+const loginUser = async (req, res) => {
+    // 1. Receber credenciais do corpo da requisição
+    const { email, password } = req.body;
+
+    // 2. Validação básica
+    if (!email || !password) {
+        // Retorna 400 Bad Request se faltar e-mail ou senha
+        return res.status(400).json({ message: 'Por favor, preencha todos os campos.' });
+    }
+
+    try {
+        // 3. Buscar o usuário pelo e-mail no banco de dados
+        const user = await User.findOne({ email });
+
+        // 4. Verificar se o usuário existe
+        if (!user) {
+            // Retorna 401 Unauthorized se o usuário não for encontrado
+            return res.status(401).json({ message: 'Credenciais inválidas ou não autorizadas.' });
+        }
+
+        // 5. Comparar a senha fornecida com a senha hash armazenada
+        // O bcrypt.compare retorna true ou false
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        // 6. Verificar a correspondência de senhas
+        if (user && isMatch) {
+            
+            // 7. Geração do Token JWT (JSON Web Token)
+            const token = jwt.sign(
+                // Payload (dados a serem armazenados no token)
+                { userId: user._id, email: user.email },
+                // Chave Secreta para Assinatura (MUITO IMPORTANTE!)
+                JWT_SECRET,
+                // Opções (Token expira em 30 dias)
+                { expiresIn: '30d' } 
+            );
+
+            // 8. Sucesso: Retorna o token gerado (e dados básicos do usuário)
+            return res.status(200).json({ 
+                _id: user._id,
+                email: user.email,
+                token: token,
+                message: 'Login bem-sucedido.'
+            });
+
+        } else {
+            // 9. Falha na senha
+            // Retorna 401 Unauthorized se a senha estiver incorreta
+            return res.status(401).json({ message: 'Credenciais inválidas ou não autorizadas.' });
+        }
+
+    } catch (error) {
+        // 10. Lidar com erros de servidor ou banco de dados
+        console.error('Erro no login:', error);
+        return res.status(500).json({ message: 'Erro interno do servidor.' });
+    }
+};
 
 const registerUser = async (req, res) => {
     // 3. Extrair dados do corpo da requisição
@@ -76,5 +143,6 @@ const registerUser = async (req, res) => {
 // Exportar a função para ser usada nas rotas
 module.exports = {
     registerUser,
+    loginUser,
     // (outras funções de login, update, delete...)
 };
