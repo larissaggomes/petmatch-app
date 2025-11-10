@@ -1,14 +1,14 @@
 // user.controller.js
-
 const User = require('../models/User'); // Ajuste o caminho conforme sua estrutura
 const bcrypt = require('bcrypt'); // Biblioteca para comparação de senhas
 const jwt = require('jsonwebtoken'); // Biblioteca para geração de tokens
+const asyncHandler = require('express-async-handler');
 
 // 2. Importar a função de geração de Token
 const { generateToken } = require('../utils/authUtils'); // <-- IMPORTADO AQUI!
 
 // Certifique-se de que esta variável de ambiente está definida no seu .env
-const JWT_SECRET = process.env.JWT_SECRET || 'sua_chave_secreta_padrao'; 
+const JWT_SECRET = process.env.JWT_SECRET; 
 
 /**
  * @desc Autentica um usuário e retorna um token de acesso
@@ -140,9 +140,32 @@ const registerUser = async (req, res) => {
     }
 };
 
+const getMe = asyncHandler(async (req, res) => {
+  // A propriedade 'req.user' foi definida no middleware 'protect'
+  // e contém todos os dados do usuário (exceto a senha) buscados no DB.
+
+  // 1. Verificar se req.user existe (Embora o middleware 'protect' garanta isso, é uma boa prática)
+  if (!req.user) {
+    res.status(404);
+    throw new Error('Usuário não encontrado.');
+  }
+
+  // 2. Retornar o objeto req.user
+  // Se você quiser customizar a resposta, pode retornar apenas campos específicos:
+  // res.status(200).json({
+  //   id: req.user._id,
+  //   email: req.user.email,
+  //   name: req.user.name,
+  // });
+
+  // No entanto, retornar o objeto completo é o mais comum para este tipo de função:
+  res.status(200).json(req.user);
+});
+
 // Exportar a função para ser usada nas rotas
 module.exports = {
     registerUser,
     loginUser,
+    getMe,
     // (outras funções de login, update, delete...)
 };
