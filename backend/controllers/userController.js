@@ -1,4 +1,3 @@
-// user.controller.js
 const User = require('../models/User'); // Ajuste o caminho conforme sua estrutura
 const bcrypt = require('bcrypt'); // Biblioteca para comparação de senhas
 const jwt = require('jsonwebtoken'); // Biblioteca para geração de tokens
@@ -17,34 +16,31 @@ const JWT_SECRET = process.env.JWT_SECRET;
  */
 const loginUser = async (req, res) => {
     // 1. Receber credenciais do corpo da requisição
+    // Nota: O campo 'name' geralmente não é necessário no login, mas mantido para a validação.
     const { name, email, password } = req.body;
-    const user = await User.findOne({ email }).select('+password');
-
+    
     // 2. Validação básica
-    if (!name || !email || !password) {
+    // Nota: Removendo 'name' daqui pois geralmente só 'email' e 'password' são obrigatórios no login.
+    if (!email || !password) {
         // Retorna 400 Bad Request se faltar e-mail ou senha
-        return res.status(400).json({ message: 'Por favor, preencha todos os campos.' });
+        return res.status(400).json({ message: 'Por favor, preencha o email e a senha.' });
     }
 
     try {
-        // 3. Buscar o usuário pelo e-mail no banco de dados
-        const user = await User.findOne({ email });
+        // 3. Buscar o usuário pelo e-mail no banco de dados.
+        // 🛑 CORREÇÃO 1: Adicionamos o .select('+password') para FORÇAR o Mongoose a retornar o hash da senha.
+        const user = await User.findOne({ email }).select('+password');
 
         // 4. Verificar se o usuário existe
         if (!user) {
             // Retorna 401 Unauthorized se o usuário não for encontrado
             return res.status(401).json({ message: 'Credenciais inválidas ou não autorizadas.' });
         }
-
-        // 🛑 Ponto de verificação 1: O usuário foi encontrado?
-        if (!user) {
-            console.log('ERRO DE LOGIN: Usuário não encontrado.');
-            return res.status(400).json({ message: 'Credenciais inválidas.' });
-        }
-
+        
         // 🛑 Ponto de verificação 2: Qual é o valor do hash ANTES da comparação?
-        console.log('Senha do usuário (Hash no DB):', user.password); // <-- ADICIONE ESTA LINHA DE DEBUG
-        console.log('Senha fornecida (Texto Plano):', password);     // <-- ADICIONE ESTA LINHA DE DEBUG
+        // Se este log retornar 'undefined', o problema é no registro ou no schema (userModel.js).
+        console.log('Senha do usuário (Hash no DB):', user.password); 
+        console.log('Senha fornecida (Texto Plano):', password);     
 
         // 5. Comparar a senha fornecida com a senha hash armazenada
         // O bcrypt.compare retorna true ou false
@@ -68,6 +64,7 @@ const loginUser = async (req, res) => {
             return res.status(200).json({ 
                 _id: user._id,
                 email: user.email,
+                name: user.name, // Adicionando name para o retorno ser mais útil
                 token: token,
                 message: 'Login bem-sucedido.'
             });
@@ -81,7 +78,7 @@ const loginUser = async (req, res) => {
     } catch (error) {
         // 10. Lidar com erros de servidor ou banco de dados
         console.error('Erro no login:', error);
-        return res.status(500).json({ message: 'Erro interno do servidor.' });
+        return res.status(500).json({ message: 'Erro interno do servidor.', error: error.message });
     }
 };
 
@@ -115,13 +112,14 @@ const registerUser = async (req, res) => {
         const newUser = new User({
             name,
             email,
-            // O hook 'pre' em User.js irá criptografar este valor
-            passwordHash: password, 
+            // 🛑 CORREÇÃO 2: O campo de destino deve ser 'password', não 'passwordHash'
+            password: password, 
             phone: req.body.phone,
             location: req.body.location
         });
 
         // 7. Salvar o novo usuário no banco de dados
+        // O hook 'pre' em User.js é ativado quando .save() é chamado.
         const savedUser = await newUser.save();
         
         // 8. 🔑 GERAR O TOKEN DE AUTENTICAÇÃO
@@ -153,31 +151,25 @@ const registerUser = async (req, res) => {
 };
 
 const getMe = asyncHandler(async (req, res) => {
-  // A propriedade 'req.user' foi definida no middleware 'protect'
-  // e contém todos os dados do usuário (exceto a senha) buscados no DB.
+    // ... (Mantido como estava, está correto)
+    
+  // A propriedade 'req.user' foi definida no middleware 'protect'
+  // e contém todos os dados do usuário (exceto a senha) buscados no DB.
 
-  // 1. Verificar se req.user existe (Embora o middleware 'protect' garanta isso, é uma boa prática)
-  if (!req.user) {
-    res.status(404);
-    throw new Error('Usuário não encontrado.');
-  }
+  // 1. Verificar se req.user existe (Embora o middleware 'protect' garanta isso, é uma boa prática)
+  if (!req.user) {
+    res.status(404);
+    throw new Error('Usuário não encontrado.');
+  }
 
-  // 2. Retornar o objeto req.user
-  // Se você quiser customizar a resposta, pode retornar apenas campos específicos:
-  // res.status(200).json({
-  //   id: req.user._id,
-  //   email: req.user.email,
-  //   name: req.user.name,
-  // });
-
-  // No entanto, retornar o objeto completo é o mais comum para este tipo de função:
-  res.status(200).json(req.user);
+  // 2. Retornar o objeto req.user
+  res.status(200).json(req.user);
 });
 
 // Exportar a função para ser usada nas rotas
 module.exports = {
-    registerUser,
-    loginUser,
-    getMe,
-    // (outras funções de login, update, delete...)
+    registerUser,
+    loginUser,
+    getMe,
+    // (outras funções de login, update, delete...)
 };
