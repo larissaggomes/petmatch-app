@@ -17,10 +17,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
  */
 const loginUser = async (req, res) => {
     // 1. Receber credenciais do corpo da requisição
-    const { email, password } = req.body;
+    const { name, email, password } = req.body;
+    const user = await User.findOne({ email }).select('+password');
 
     // 2. Validação básica
-    if (!email || !password) {
+    if (!name || !email || !password) {
         // Retorna 400 Bad Request se faltar e-mail ou senha
         return res.status(400).json({ message: 'Por favor, preencha todos os campos.' });
     }
@@ -35,9 +36,20 @@ const loginUser = async (req, res) => {
             return res.status(401).json({ message: 'Credenciais inválidas ou não autorizadas.' });
         }
 
+        // 🛑 Ponto de verificação 1: O usuário foi encontrado?
+        if (!user) {
+            console.log('ERRO DE LOGIN: Usuário não encontrado.');
+            return res.status(400).json({ message: 'Credenciais inválidas.' });
+        }
+
+        // 🛑 Ponto de verificação 2: Qual é o valor do hash ANTES da comparação?
+        console.log('Senha do usuário (Hash no DB):', user.password); // <-- ADICIONE ESTA LINHA DE DEBUG
+        console.log('Senha fornecida (Texto Plano):', password);     // <-- ADICIONE ESTA LINHA DE DEBUG
+
         // 5. Comparar a senha fornecida com a senha hash armazenada
         // O bcrypt.compare retorna true ou false
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await bcrypt.compare(
+            password, user.password);
 
         // 6. Verificar a correspondência de senhas
         if (user && isMatch) {

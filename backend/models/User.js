@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs"); // 1. Importar o bcryptjs
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  passwordHash: { type: String, required: true }, // Mantenha o nome do campo como está
+  passwordHash: { type: String, required: true, select: false }, // Mantenha o nome do campo como está
   phone: String,
   location: String,
   pets: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pet" }],
