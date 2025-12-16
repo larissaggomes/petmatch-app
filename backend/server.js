@@ -15,6 +15,7 @@ const PORT = 3000;
 const DB_URL = process.env.DATABASE_URL;
 console.log(`URI de Conexão sendo usada: ${DB_URL}`);
 dataBaseConnect();
+console.log("Conexão com o banco de dados estabelecida com sucesso!");
 
 app.use(express.static(path.join(__dirname, "frontend")));
 
