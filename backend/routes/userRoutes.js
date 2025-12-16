@@ -3,7 +3,9 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController'); // Ajuste o caminho conforme sua estrutura de pastas
 const middleware = require('../middlewares/authMiddlewares');
+const passport = require('../config/passport'); // Certifique-se de carregar a configuração do Passport
 
+router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 // Rota POST para registrar um novo usuário
 // LIGAÇÃO com userController.registerUser (Você deve criar esta função)
 router.post('/users/register', userController.registerUser);
