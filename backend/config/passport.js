@@ -2,6 +2,21 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('./models/User'); // Importe seu modelo de usuário do banco de dados
 
+// Salva apenas o ID do usuário na sessão (para ocupar menos espaço)
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+// Usa o ID salvo para buscar o usuário completo no banco de dados
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findById(id);
+        done(null, user);
+    } catch (err) {
+        done(err, null);
+    }
+});
+
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,

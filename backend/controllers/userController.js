@@ -14,6 +14,25 @@ const JWT_SECRET = process.env.JWT_SECRET;
  * @route POST /api/users/login
  * @access Public
  */
+
+exports.googleAuthCallback = (req, res) => {
+    // O Passport coloca o usuário em req.user após o sucesso
+    const user = req.user;
+
+    // 1. Criar o Token JWT usando o ID do usuário
+    const token = jwt.sign(
+        { id: user._id || user.id }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: '1d' } // Expira em 1 dia
+    );
+
+    // 2. Redirecionar para o Frontend enviando o JWT na URL
+    // Substitua 3000 pela porta real do seu frontend
+    const frontendURL = `http://localhost:3000/dashboard.html?token=${token}`;
+    
+    res.redirect(frontendURL);
+};
+
 const loginUser = async (req, res) => {
     // 1. Receber credenciais do corpo da requisição
     // Nota: O campo 'name' geralmente não é necessário no login, mas mantido para a validação.
